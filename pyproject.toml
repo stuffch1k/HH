@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "hh"
+version = "0.1.0"
+description = ""
+authors = ["stuffch1k <elizaveta.sineva@urfu.me>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "^4.1.7"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
