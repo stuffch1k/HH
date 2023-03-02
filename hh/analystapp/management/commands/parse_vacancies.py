@@ -11,7 +11,6 @@ from analystapp.models import Skill
 
 API_URL = 'https://api.hh.ru/{}'
 HEADER = {"User-Agent": "HHRu_Parser/1.0 (volkov03dima@gmail.com)"}
-SAVE_NAME = 'new_vacancies.csv'
 
 class Command(BaseCommand):
 
