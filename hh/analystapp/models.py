@@ -5,7 +5,7 @@ from django.db import models
 class Vacancy(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True, null=True)
-    skill = models.ForeignKey('Skill',on_delete=models.CASCADE,null=True)
+    skill = models.ManyToManyField('Skill',null=True, blank=True)
 
     def __str__(self):
         return self.name
