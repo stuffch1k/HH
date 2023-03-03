@@ -18,6 +18,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("Начало парсинга вакансий")
+        self.PR = []
+
+        # Получить все IT профессии
+        it_pr = requests.get(API_URL.format('professional_roles'), headers=HEADER).json()['categories'][7]['roles']
+        for p in it_pr:
+            self.PR.append(p['id'])
 
         # разделяем по временным интервалам
         date_from = datetime.datetime.now() - datetime.timedelta(days=options['days'])
@@ -47,7 +53,7 @@ class Command(BaseCommand):
     def get_post(self, date_from, date_to, page=0):
         result = []
         params = {
-            'specialization': 1,
+            'professional_role': self.PR,
             'per_page': 100,
             'page': page,
             'date_from': date_from.strftime('%Y-%m-%dT%H:%M:%S%z'),
@@ -57,19 +63,21 @@ class Command(BaseCommand):
         resp = requests.get(API_URL.format('vacancies'), headers=HEADER, params=params)
         self.stdout.write(f"Получение информации о последних 100 вакансиях")
 
-        for i in resp.json()['items']:
-            # Если уже есть в БД - ничего не делаем
-            if Vacancy.objects.filter(hh_id=i['id']).exists(): break
-            # Отдельным запросом нужно получить блядские навыки
-            others = self.get_post_desc_and_skills(i['id'])
-            # Если нет навыков - нахуй
-            if len(others[1]) == 0: break
+        if 'items' in resp.json():
+            for i in resp.json()['items']:
+                # Если уже есть в БД - ничего не делаем
+                if Vacancy.objects.filter(hh_id=i['id']).exists(): break
+                # Отдельным запросом нужно получить блядские навыки
+                others = self.get_post_desc_and_skills(i['id'])
+                # Если нет навыков - нахуй
+                if len(others[1]) == 0: break
 
-            result.append({'name': i['name'], 'description': others[0], 'key_skills': others[1]})
-            vac = Vacancy.objects.create(name=i['name'], description=others[0])
-            for ks in others[1]: vac.skill.create(name=ks['name'])
-            for pr in others[2]: vac.professional_roles.create(hh_id=pr['id'], name=pr['name'])
+                result.append({'name': i['name'], 'description': others[0], 'key_skills': others[1]})
+                vac = Vacancy.objects.create(hh_id=i['id'], name=i['name'], description=others[0])
+                for ks in others[1]: vac.skill.create(name=ks['name'])
+                for pr in others[2]: vac.professional_roles.create(hh_id=pr['id'], name=pr['name'])
+            self.stdout.write(f"Конец обработки 100 вакансий")
+        else:
+            print(resp.json())
 
-
-        self.stdout.write(f"Конец обработки 100 вакансий")
         return result
