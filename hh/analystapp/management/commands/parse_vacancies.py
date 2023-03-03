@@ -1,34 +1,36 @@
 from django.core.management import BaseCommand
 
-import multiprocessing
+import threading
 
 import pandas as pd
 import requests
 import datetime
 
 from analystapp.models import Vacancy
-from analystapp.models import Skill
 
 API_URL = 'https://api.hh.ru/{}'
 HEADER = {"User-Agent": "HHRu_Parser/1.0 (volkov03dima@gmail.com)"}
 
-class Command(BaseCommand):
 
+class Command(BaseCommand):
     help = "Парсит все по возможности вакансии с hh.ru"
 
+    def add_arguments(self, parser):
+        parser.add_argument('days', default=15, type=int)
+
     def handle(self, *args, **options):
-        print("Заглушка")
-        # date_from = datetime.datetime.now() - datetime.timedelta(days=30)
-        # time = pd.date_range(date_from, datetime.datetime.now(), freq="H")
-        #
-        # times = []
-        # for i, t in enumerate(time):
-        #     if i + 1 < len(time): times.append([t, time[i + 1]])
-        #
-        # pool = multiprocessing.Pool(multiprocessing.cpu_count())
-        # pool.map_async(self.get_task, times, callback=self.on_end_parse)
-        # pool.close()
-        # pool.join()
+        self.stdout.write("Начало парсинга вакансий")
+
+        date_from = datetime.datetime.now() - datetime.timedelta(days=options['days'])
+        time = pd.date_range(date_from, datetime.datetime.now(), freq="4H")
+
+        for i, t in enumerate(time):
+            if i + 1 < len(time):
+                thread = threading.Thread(target=self.get_task, args=([t, time[i + 1]], ))
+                thread.start()
+                thread.join()
+
+        self.stdout.write(self.style.SUCCESS("Конец работы"))
 
     def get_task(self, freq):
         result = []
@@ -36,9 +38,14 @@ class Command(BaseCommand):
             out = self.get_post(freq[0], freq[1], p)
             if len(out) == 0: break
             result += out
-        return result
+        self.on_end_parse(result)
+
+    def get_post_desc_and_skills(self, post_id):
+        full_info = requests.get(API_URL.format('vacancies') + '/' + post_id, headers=HEADER).json()
+        return full_info['description'], full_info['key_skills']
 
     def get_post(self, date_from, date_to, page=0):
+        result = []
         params = {
             'specialization': 1,
             'per_page': 100,
@@ -47,14 +54,12 @@ class Command(BaseCommand):
             'date_to': date_to.strftime('%Y-%m-%dT%H:%M:%S%z'),
         }
         resp = requests.get(API_URL.format('vacancies'), headers=HEADER, params=params)
-        return resp.json()['items'] if 'items' in resp.json() else []
+        for i in resp.json()['items']:
+            others = self.get_post_desc_and_skills(i['id'])
+            result.append({'name': i['name'], 'description': others[0], 'key_skills': others[1]})
+        return result
 
     def on_end_parse(self, response):
-        print("Заглушка")
-        # for resp in response:
-        #     for r in resp:
-        #         for ks in r['key_skills']: Skill.objects.update_or_create(name=ks['name'])
-        #         Vacancy.objects.create(
-        #             name=r['name'],
-        #             description=r['description']
-        #         )
+        for r in response:
+            vac = Vacancy.objects.create(name=r['name'], description=r['description'])
+            for ks in r['key_skills']: vac.skill.create(name=ks['name'])
