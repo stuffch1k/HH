@@ -1,0 +1,10 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block content %}
+<form action="/skills_rate" method="get">
+    <label for="vacancies_name">Название вакансии:</label><br>
+    <input type="text" id="vacancies_name" name="vacancies_name" placeholder="Аналитик Аналитик-разработчик"><br>
+    <input type="submit" value="Submit">
+</form>
+{% endblock %}
