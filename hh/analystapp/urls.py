@@ -8,5 +8,6 @@ from .views import *
 
 urlpatterns = [
     path('', index, name='home'),
-    path('skills_rate/', skills_rate, name='home'),
+    path('skills_rate/', skills_rate),
+    path('gen_csv/', skills_rate_csv),
 ]
