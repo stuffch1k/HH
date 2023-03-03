@@ -1,7 +1,5 @@
 from django.core.management import BaseCommand
 
-import threading
-
 import pandas as pd
 import requests
 import datetime
@@ -23,33 +21,28 @@ class Command(BaseCommand):
 
         # разделяем по временным интервалам
         date_from = datetime.datetime.now() - datetime.timedelta(days=options['days'])
-        time = pd.date_range(date_from, datetime.datetime.now(), freq="4H")
+        time = pd.date_range(date_from, datetime.datetime.now(), freq="H")
 
-        # ебучие пи... потоки
-        threads = []
         for i, t in enumerate(time):
             if i + 1 < len(time):
-                t = threading.Thread(target=self.get_task, args=([t, time[i + 1]], i))
-                threads.append(t)
-                t.start()
+                self.get_task([t, time[i + 1]], i)
 
-        [thread.join() for thread in threads]
 
         self.stdout.write(self.style.SUCCESS("Конец работы"))
 
-    def get_task(self, freq, thread_num):
-        self.stdout.write(self.style.SUCCESS(f"Начало работы потока {thread_num}"))
-        result = []
+    def get_task(self, freq, tnum):
+        self.stdout.write(self.style.SUCCESS(f"Начало работы задачи номер {tnum}"))
         # если страниц несколько
         for p in range(0, 20 + 1):
-            out = self.get_post(freq[0], freq[1], p)
-            if len(out) == 0: break
-            result += out
-        self.on_end_parse(result, thread_num)
+            if len(self.get_post(freq[0], freq[1], p)) == 0:
+                break
 
     def get_post_desc_and_skills(self, post_id):
         full_info = requests.get(API_URL.format('vacancies') + '/' + post_id, headers=HEADER).json()
-        return full_info['description'] if 'description' in full_info else "", full_info['key_skills'] if 'key_skills' in full_info else []
+        if 'error' in full_info or 'errors' in full_info:
+            print(full_info)
+            return
+        return full_info['description'], full_info['key_skills'], full_info['professional_roles']
 
     def get_post(self, date_from, date_to, page=0):
         result = []
@@ -60,16 +53,23 @@ class Command(BaseCommand):
             'date_from': date_from.strftime('%Y-%m-%dT%H:%M:%S%z'),
             'date_to': date_to.strftime('%Y-%m-%dT%H:%M:%S%z'),
         }
+
         resp = requests.get(API_URL.format('vacancies'), headers=HEADER, params=params)
+        self.stdout.write(f"Получение информации о последних 100 вакансиях")
+
         for i in resp.json()['items']:
+            # Если уже есть в БД - ничего не делаем
+            if Vacancy.objects.filter(hh_id=i['id']).exists(): break
             # Отдельным запросом нужно получить блядские навыки
             others = self.get_post_desc_and_skills(i['id'])
-            result.append({'name': i['name'], 'description': others[0], 'key_skills': others[1]})
-        return result
+            # Если нет навыков - нахуй
+            if len(others[1]) == 0: break
 
-    def on_end_parse(self, response, tnum):
-        self.stdout.write(self.style.SUCCESS(f"Завершение работы потока {tnum}"))
-        # заполняем данные в бд
-        for r in response:
-            vac = Vacancy.objects.create(name=r['name'], description=r['description'])
-            for ks in r['key_skills']: vac.skill.create(name=ks['name'])
+            result.append({'name': i['name'], 'description': others[0], 'key_skills': others[1]})
+            vac = Vacancy.objects.create(name=i['name'], description=others[0])
+            for ks in others[1]: vac.skill.create(name=ks['name'])
+            for pr in others[2]: vac.professional_roles.create(hh_id=pr['id'], name=pr['name'])
+
+
+        self.stdout.write(f"Конец обработки 100 вакансий")
+        return result
