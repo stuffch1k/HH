@@ -5,7 +5,18 @@
 <h2>Вакансий по запросу "{{ request.GET.vacancies_name }}" - {{ vac_count }}</h2>
 <p><a href="/gen_csv/?vacancies_name={{ request.GET.vacancies_name }}">Скачать CSV файл</a></p>
 <p>
-    <table style="border-width: medium">
+    Название вакансий:
+    <ul style="float: right; padding-right: 40px">
+        {% for vacancy in vacancies %}
+            <li>
+                {{ vacancy.name }} <br>
+                {% for skill in vacancy.skills %}
+                    {{ skill }}
+                {% endfor %}
+            </li>
+        {% endfor %}
+    </ul>
+    <table style="border-width: medium; float: left">
         <tr>
             <th>Навык</th>
             <th>Общее количество</th>

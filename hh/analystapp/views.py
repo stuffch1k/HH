@@ -27,9 +27,11 @@ def prepare_rate(vname):
 
 
 def skills_rate(request):
+    vacancies = models.Vacancy.objects.filter(name__contains=request.GET['vacancies_name'])
     return render(request, 'skills_rate.html', {
         'stats': prepare_rate(request.GET['vacancies_name']),
-        'vac_count': models.Vacancy.objects.filter(name__contains=request.GET['vacancies_name']).count()
+        'vac_count': vacancies.count(),
+        'vacancies': vacancies
     })
 
 
