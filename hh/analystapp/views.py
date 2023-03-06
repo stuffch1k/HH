@@ -1,6 +1,7 @@
 import csv
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.http import JsonResponse
 
 # Create your views here.
 import analystapp.models as models
@@ -46,3 +47,14 @@ def skills_rate_csv(request):
         writer.writerow([i[0], i[1][0], i[1][1]])
 
     return response
+
+
+def skills_rate_json(request):
+    vacancies = models.Vacancy.objects.filter(name__contains=request.GET['vacancies_name'])
+    result = {'vacanciesFound': vacancies.count(),
+              'vacanciesStats': [],
+              'vacanciesNames': [vac.name for vac in vacancies]}
+    for skill in prepare_rate(request.GET['vacancies_name']):
+        result['vacanciesStats'].append({"name": skill[0], "count": skill[1][0], "rate": round(skill[1][1], 2)})
+
+    return JsonResponse(result)
