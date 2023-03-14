@@ -5,7 +5,6 @@ from django.db import models
 class Vacancy(models.Model):
     hh_id = models.CharField(max_length=15, null=True, blank=True)
     name = models.CharField(max_length=255, db_index=True)
-    description = models.TextField(blank=True, null=True)
     professional_roles = models.ManyToManyField('ProfessionalRole', blank=True)
     skill = models.ManyToManyField('Skill', blank=True)
 
