@@ -50,11 +50,11 @@ def skills_rate_csv(request):
 
 
 def skills_rate_json(request):
-    vacancies = models.Vacancy.objects.filter(name__contains=request.GET['vacancies_name'])
+    vacancies = models.Vacancy.objects.filter(name__contains=request.POST['vacancies_name'])
     result = {'vacanciesFound': vacancies.count(),
               'vacanciesStats': [],
               'vacanciesNames': [vac.name for vac in vacancies]}
-    for skill in prepare_rate(request.GET['vacancies_name']):
+    for skill in prepare_rate(request.POST['vacancies_name']):
         result['vacanciesStats'].append({"name": skill[0], "count": skill[1][0], "rate": round(skill[1][1], 2)})
 
     return JsonResponse(result)
