@@ -11,5 +11,6 @@ urlpatterns = [
     # path('skills_rate/', skills_rate),
     # path('gen_csv/', skills_rate_csv),
 
+    path('private-api/skills_rate', skills_rate_json),
     path('private-api/skills_rate/', skills_rate_json),
 ]

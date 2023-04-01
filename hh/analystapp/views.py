@@ -2,6 +2,7 @@ import csv
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 import analystapp.models as models
@@ -49,6 +50,7 @@ def skills_rate_csv(request):
     return response
 
 
+@csrf_exempt
 def skills_rate_json(request):
     vacancies = models.Vacancy.objects.filter(name__contains=request.POST['vacancies_name'])
     result = {'vacanciesFound': vacancies.count(),
